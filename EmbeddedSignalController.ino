@@ -27,13 +27,29 @@ int potValue = 0;
 // ------------- Morse ----------------
 
 // 0 = short, 1 = long
-char sosCode[] = {0,0,0, 1,1,1, 0,0,0};
+bool morseMessage[] = {0,0,0, 1,1,1, 0,0,0};
+int messageSize = sizeof(morseMessage) / sizeof(morseMessage[0]);
+int currentCharacterIndex = 0;
 
-float morseShortTime = .5;
-float morseLongTime = 1.0;
-float morsePause = .5;
+// units in milliseconds
+float morseShortTime = 500;
+float morseLongTime = 1000;
+float morsePause = 500;
 
 bool morseRunning = false;
+
+bool isBlinking = false;
+
+// ----------- States ------------------
+
+enum class State{
+  SHORT,
+  LONG,
+  WAIT,
+  IDLE
+};
+
+State currentState = State::IDLE;
 
 // ----------- Colors ------------------
 
@@ -46,6 +62,8 @@ namespace colors {
   const Color GREEN = {0, 255, 0};
   const Color BLUE = {0, 0, 255};
 };
+
+Color currentColor = colors::BLUE;
 
 // -----------------------------
 
@@ -64,16 +82,41 @@ void setup() {
 
 void loop() {
 
-  uptime = millis();
-
-  
-
-  if(buttonPressed == 1){
-    blinkLED(0, colors::RED);
+  for(int i = 0; i < messageSize; i++){
+    // i understand how to implement for loops, 
+    // they just were not relevant for this project for me
   }
 
+  uptime = millis();
+
+  // state machine
+  switch(currentState){
+    case State::IDLE:
+      
+      // check for button press
+      break;
+    case State::LONG:
+      
+      break;
+
+  }
+
+  // if(isBlinking){
+  //   if(currentCharacterIndex == 0){
+
+  //   }
+  //   if((uptime - blinkStartTime) >= morseShortTime){
+
+  //   }
+  // }
+  unsigned long blinkStartTime = uptime;
+
+
+  // if(buttonPressed == 1){
+  //   blinkLED(0, currentColor);
+  // }
+
   updateColor();
-  delay(100);
 
   Serial.println(potValue);
 }
@@ -84,14 +127,16 @@ void updateColor(){
 
   // divide 4096 into 3 segments for LED colors
   if(potValue <= 1 * (4096/3)){
-    blinkLED(0, colors::RED);
+    currentColor = colors::BLUE;
   }
   else if(potValue <= 2 * (4096/3)){
-    blinkLED(0, colors::BLUE);
+    currentColor = colors::GREEN;
   } 
   else{
-    blinkLED(0, colors::GREEN);
+    currentColor = colors::RED;
   }
+
+  
 }
 
 void blinkLED(bool length, Color color){
