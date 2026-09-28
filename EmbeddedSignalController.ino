@@ -12,7 +12,8 @@ Class ELV1-3
 // leds: yellow: 4, blue: 23, green: 22, red 21
 
 const int potPin = 18;
-const int ledPin = 48;
+const int statusLEDPin = 48;
+// const int morseLEDPin = 14;
 const int button1Pin = 4;
 const int button2Pin = 5;
 
@@ -31,14 +32,15 @@ bool morseMessage[] = {0,0,0, 1,1,1, 0,0,0};
 int messageSize = sizeof(morseMessage) / sizeof(morseMessage[0]);
 int currentCharacterIndex = 0;
 
-// units in milliseconds
-float morseShortTime = 500;
-float morseLongTime = 1000;
-float morsePause = 500;
+// wait time in seconds
+float morseShortTime = 0.5;
+float morseLongTime = 1.0;
+float morsePause = 0.5;
 
 bool morseRunning = false;
 
-bool isBlinking = false;
+// timer
+int morseTimerCurrentTime = 0;
 
 // ----------- States ------------------
 
@@ -63,8 +65,6 @@ namespace colors {
   const Color BLUE = {0, 0, 255};
 };
 
-Color currentColor = colors::BLUE;
-
 // -----------------------------
 
 void setup() {
@@ -82,10 +82,10 @@ void setup() {
 
 void loop() {
 
-  for(int i = 0; i < messageSize; i++){
-    // i understand how to implement for loops, 
-    // they just were not relevant for this project for me
-  }
+  // for(int i = 0; i < messageSize; i++){
+  //   // i understand how to implement for loops, 
+  //   // they just were not relevant for this project for me
+  // }
 
   uptime = millis();
 
@@ -109,39 +109,39 @@ void loop() {
 
   //   }
   // }
+
   unsigned long blinkStartTime = uptime;
 
-
-  // if(buttonPressed == 1){
-  //   blinkLED(0, currentColor);
-  // }
-
-  updateColor();
+  updateStatusLED();
 
   Serial.println(potValue);
 }
 
-void updateColor(){
+void updateStatusLED(){
 
   potValue = analogRead(potPin);
 
   // divide 4096 into 3 segments for LED colors
   if(potValue <= 1 * (4096/3)){
-    currentColor = colors::BLUE;
+    setStatusLED(colors::BLUE);
   }
   else if(potValue <= 2 * (4096/3)){
-    currentColor = colors::GREEN;
+    setStatusLED(colors::GREEN);
   } 
   else{
-    currentColor = colors::RED;
+    setStatusLED(colors::RED);
   }
-
   
 }
 
-void blinkLED(bool length, Color color){
+void setState(state newState){
 
-  length;
+  
+
+  currentState = newState;
+}
+
+void setStatusLEDColor(Color color){
   // use rgbLedWrite for the built-in RGB LED of the ESP32 S3
   rgbLedWrite(ledPin, color.r, color.g, color.b);
 
