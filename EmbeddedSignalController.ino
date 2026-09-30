@@ -11,11 +11,15 @@ Class ELV1-3
 // buttons: 34 and 35
 // leds: yellow: 4, blue: 23, green: 22, red 21
 
-const int potPin = 18;
-const int statusLEDPin = 48;
-// const int morseLEDPin = 14;
-const int button1Pin = 4;
-const int button2Pin = 5;
+const int potPin = 33;
+const int morseLEDPin = 4;
+
+const int button1Pin = 34;
+const int button2Pin = 35;
+
+const int blueLEDPin = 23;
+const int greenLEDPin = 22;
+const int redLEDPin = 21;
 
 // ------------ General -----------------
 
@@ -24,6 +28,13 @@ unsigned long uptime = 0;
 bool buttonPressed = false;
 
 int potValue = 0;
+
+enum ledColor : int{
+  BLUE = blueLEDPin,
+  GREEN = greenLEDPin,
+  RED = redLEDPin 
+};
+
 
 // ------------- Morse ----------------
 
@@ -35,35 +46,14 @@ int currentCharacterIndex = 0;
 // wait time in seconds
 float morseShortTime = 0.5;
 float morseLongTime = 1.0;
-float morsePause = 0.5;
+float morsePauseTime = 0.5;
 
 bool morseRunning = false;
 
 // timer
-int morseTimerCurrentTime = 0;
-
-// ----------- States ------------------
-
-enum class State{
-  SHORT,
-  LONG,
-  WAIT,
-  IDLE
-};
-
-State currentState = State::IDLE;
-
-// ----------- Colors ------------------
-
-struct Color{
-  uint r, g, b;
-};
-
-namespace colors {
-  const Color RED = {255, 0, 0};
-  const Color GREEN = {0, 255, 0};
-  const Color BLUE = {0, 0, 255};
-};
+unsigned long morseTimerStartTime = 0;
+bool morsePaused = false;
+bool morseStarted = false;
 
 // -----------------------------
 
@@ -71,78 +61,90 @@ void setup() {
 
   Serial.begin(115200);
 
-  // pullup because on my PCB I have wired the buttons to ground
   pinMode(button1Pin, INPUT_PULLUP);
   pinMode(button2Pin, INPUT_PULLUP);
 
   pinMode(potPin, INPUT);
-  pinMode(ledPin, OUTPUT);
+
+  pinMode(blueLEDPin, OUTPUT);
+  pinMode(greenLEDPin, OUTPUT);
+  pinMode(redLEDPin, OUTPUT);
 
 }
 
 void loop() {
 
-  // for(int i = 0; i < messageSize; i++){
-  //   // i understand how to implement for loops, 
-  //   // they just were not relevant for this project for me
-  // }
-
-  uptime = millis();
-
-  // state machine
-  switch(currentState){
-    case State::IDLE:
-      
-      // check for button press
-      break;
-    case State::LONG:
-      
-      break;
-
-  }
-
-  // if(isBlinking){
-  //   if(currentCharacterIndex == 0){
-
-  //   }
-  //   if((uptime - blinkStartTime) >= morseShortTime){
-
-  //   }
-  // }
-
-  unsigned long blinkStartTime = uptime;
+  runMorseSequence();
 
   updateStatusLED();
 
-  Serial.println(potValue);
+}
+
+void runMorseSequence(){
+
+  uptime = millis();
+
+  // Get the wait time for the current character, then multiply by 1000 to get the milliseconds from seconds
+  int waitTime = (morseMessage[currentCharacterIndex] ? morseLongTime : morseShortTime) * 1000;
+  
+  if(!morseStarted){
+    digitalWrite(morseLEDPin, HIGH);
+    morseStarted = true;
+  } 
+  
+  if((uptime - morseTimerStartTime) > waitTime && !morsePaused){
+    
+    // fire when character timer ends:
+    digitalWrite(morseLEDPin, LOW);
+
+    // start pause timer
+    morsePaused = true;
+  }
+  else if((uptime - morseTimerStartTime) > morsePauseTime){
+    
+    // fire when pause timer ends:
+    digitalWrite(morseLEDPin, HIGH);
+
+    // increase current character index
+    if(currentCharacterIndex < (messageSize -1)){
+      currentCharacterIndex++;
+    }else{
+      currentCharacterIndex = 0;
+    }
+
+    // restart morse timer
+    morseTimerStartTime = uptime;
+    morsePaused = false;
+  }
+
+  
+  Serial.println(currentCharacterIndex);
+  Serial.println(waitTime);
+
+
 }
 
 void updateStatusLED(){
 
   potValue = analogRead(potPin);
 
-  // divide 4096 into 3 segments for LED colors
-  if(potValue <= 1 * (4096/3)){
-    setStatusLED(colors::BLUE);
+  // 
+  if(potValue <= 1000){
+    setStatusLEDColor(ledColor::BLUE);
   }
-  else if(potValue <= 2 * (4096/3)){
-    setStatusLED(colors::GREEN);
+  else if(potValue > 1000 && potValue <= 2500){
+    setStatusLEDColor(ledColor::GREEN);
   } 
   else{
-    setStatusLED(colors::RED);
+    setStatusLEDColor(ledColor::RED);
   }
   
 }
 
-void setState(state newState){
-
+void setStatusLEDColor(int ledCol){
+  digitalWrite(blueLEDPin, LOW);
+  digitalWrite(greenLEDPin, LOW);
+  digitalWrite(redLEDPin, LOW);
   
-
-  currentState = newState;
-}
-
-void setStatusLEDColor(Color color){
-  // use rgbLedWrite for the built-in RGB LED of the ESP32 S3
-  rgbLedWrite(ledPin, color.r, color.g, color.b);
-
+  digitalWrite(ledCol, HIGH);
 }
