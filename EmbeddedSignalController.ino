@@ -15,8 +15,8 @@ Class ELV1-3
 const int potPin = 16;
 const int morseLEDPin = 9;
 
-const int button1Pin = 34;
-const int button2Pin = 35;
+const int button1Pin = 4;
+const int button2Pin = 5;
 
 const int blueLEDPin = 12;
 const int greenLEDPin = 11;
@@ -82,7 +82,28 @@ void setup() {
 
 void loop() {
 
-  runMorseSequence();
+  // flip input values because they run to ground
+  bool button1Pressed = !digitalRead(button1Pin);
+  bool button2Pressed = !digitalRead(button2Pin);
+
+  Serial.println(button1Pressed);
+  Serial.println(button2Pressed);
+
+  if(button1Pressed && !button1PrevPressed){
+    runMorse = true;
+    initMorse();
+  }
+  else if(button2Pressed && !button2PrevPressed){
+    runMorse = false;
+    digitalWrite(morseLEDPin, LOW);
+  }
+
+  button1PrevPressed = button1Pressed;
+  button2PrevPressed = button2Pressed;
+
+  if(runMorse){
+    runMorseSequence();
+  }
 
   updateStatusLED();
 
@@ -93,6 +114,8 @@ void loop() {
 void initMorse(){
   // get the wait time for the current character, then multiply by 1000 to get the milliseconds from seconds
   currentWaitTime = (morseMessage[currentCharacterIndex] ? morseLongTime : morseShortTime) * 1000;
+
+  currentCharacterIndex = 0;
 
   // save the current time
   morseTimerStartTime = millis();
@@ -113,27 +136,26 @@ void runMorseSequence(){
 
       digitalWrite(morseLEDPin, LOW);
       morsePaused = false; // unpause next timer loop
-      
-      Serial.println("paused"); 
-      Serial.println(uptime); 
+
     }
     else{
       // get the wait time for the current character, then multiply by 1000 to get the milliseconds from seconds
       currentWaitTime = (morseMessage[currentCharacterIndex] ? morseLongTime : morseShortTime) * 1000;
       digitalWrite(morseLEDPin, HIGH);
       
-      // modulo message size to keep looping within the max size
-      currentCharacterIndex = (currentCharacterIndex + 1) % messageSize;
+      if(currentCharacterIndex < messageSize){
+        currentCharacterIndex = currentCharacterIndex++;
+      }
+      else{
+        runMorse = false;
+      }
       
       morsePaused = true; // pause next time
-      
-      Serial.println(currentCharacterIndex); 
-      Serial.println(uptime); 
+
     }
 
     morseTimerStartTime = uptime;
-
-
+    
   }
 }
 
