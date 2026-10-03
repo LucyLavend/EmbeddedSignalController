@@ -8,33 +8,35 @@ Class ELV1-3
 */
 // ----------- Pins ------------------
 
+// Hanze prototyping board pins:
 // buttons: 34 and 35
 // leds: yellow: 4, blue: 23, green: 22, red 21
 
-const int potPin = 33;
-const int morseLEDPin = 4;
+const int potPin = 16;
+const int morseLEDPin = 9;
 
 const int button1Pin = 34;
 const int button2Pin = 35;
 
-const int blueLEDPin = 23;
-const int greenLEDPin = 22;
-const int redLEDPin = 21;
+const int blueLEDPin = 12;
+const int greenLEDPin = 11;
+const int redLEDPin = 10;
 
 // ------------ General -----------------
 
 unsigned long uptime = 0;
 
-bool buttonPressed = false;
-
-int potValue = 0;
-
+// assign the pin numbers to color names
 enum ledColor : int{
   BLUE = blueLEDPin,
   GREEN = greenLEDPin,
-  RED = redLEDPin 
+  RED = redLEDPin
 };
 
+bool runMorse = false;
+
+bool button1PrevPressed = false;
+bool button2PrevPressed = false;
 
 // ------------- Morse ----------------
 
@@ -48,12 +50,14 @@ float morseShortTime = 0.5;
 float morseLongTime = 1.0;
 float morsePauseTime = 0.5;
 
-bool morseRunning = false;
+// currently selected wait time
+int currentWaitTime = 0;
 
 // timer
 unsigned long morseTimerStartTime = 0;
+
+// pause between blinks
 bool morsePaused = false;
-bool morseStarted = false;
 
 // -----------------------------
 
@@ -61,15 +65,19 @@ void setup() {
 
   Serial.begin(115200);
 
+
   pinMode(button1Pin, INPUT_PULLUP);
   pinMode(button2Pin, INPUT_PULLUP);
 
   pinMode(potPin, INPUT);
 
+  pinMode(morseLEDPin, OUTPUT);
+
   pinMode(blueLEDPin, OUTPUT);
   pinMode(greenLEDPin, OUTPUT);
   pinMode(redLEDPin, OUTPUT);
 
+  initMorse();
 }
 
 void loop() {
@@ -80,55 +88,62 @@ void loop() {
 
 }
 
+// ------ morse -------
+
+void initMorse(){
+  // get the wait time for the current character, then multiply by 1000 to get the milliseconds from seconds
+  currentWaitTime = (morseMessage[currentCharacterIndex] ? morseLongTime : morseShortTime) * 1000;
+
+  // save the current time
+  morseTimerStartTime = millis();
+  morsePaused = false;
+    digitalWrite(morseLEDPin, HIGH);
+}
+
 void runMorseSequence(){
 
   uptime = millis();
 
-  // Get the wait time for the current character, then multiply by 1000 to get the milliseconds from seconds
-  int waitTime = (morseMessage[currentCharacterIndex] ? morseLongTime : morseShortTime) * 1000;
-  
-  if(!morseStarted){
-    digitalWrite(morseLEDPin, HIGH);
-    morseStarted = true;
-  } 
-  
-  if((uptime - morseTimerStartTime) > waitTime && !morsePaused){
-    
-    // fire when character timer ends:
-    digitalWrite(morseLEDPin, LOW);
+  // called every time timer ends
+  if(uptime - morseTimerStartTime > currentWaitTime){
 
-    // start pause timer
-    morsePaused = true;
-  }
-  else if((uptime - morseTimerStartTime) > morsePauseTime){
-    
-    // fire when pause timer ends:
-    digitalWrite(morseLEDPin, HIGH);
 
-    // increase current character index
-    if(currentCharacterIndex < (messageSize -1)){
-      currentCharacterIndex++;
-    }else{
-      currentCharacterIndex = 0;
+    if(morsePaused){
+      currentWaitTime = morsePauseTime * 1000; // multiply to get milliseconds
+
+      digitalWrite(morseLEDPin, LOW);
+      morsePaused = false; // unpause next timer loop
+      
+      Serial.println("paused"); 
+      Serial.println(uptime); 
+    }
+    else{
+      // get the wait time for the current character, then multiply by 1000 to get the milliseconds from seconds
+      currentWaitTime = (morseMessage[currentCharacterIndex] ? morseLongTime : morseShortTime) * 1000;
+      digitalWrite(morseLEDPin, HIGH);
+      
+      // modulo message size to keep looping within the max size
+      currentCharacterIndex = (currentCharacterIndex + 1) % messageSize;
+      
+      morsePaused = true; // pause next time
+      
+      Serial.println(currentCharacterIndex); 
+      Serial.println(uptime); 
     }
 
-    // restart morse timer
     morseTimerStartTime = uptime;
-    morsePaused = false;
+
+
   }
-
-  
-  Serial.println(currentCharacterIndex);
-  Serial.println(waitTime);
-
-
 }
+
+// -------- potentiometer LEDs -------
 
 void updateStatusLED(){
 
-  potValue = analogRead(potPin);
+  int potValue = analogRead(potPin);
 
-  // 
+  // set color of status LED based on potentiometer rotation
   if(potValue <= 1000){
     setStatusLEDColor(ledColor::BLUE);
   }
