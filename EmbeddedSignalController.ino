@@ -57,7 +57,7 @@ int currentWaitTime = 0;
 unsigned long morseTimerStartTime = 0;
 
 // pause between blinks
-bool morsePaused = false;
+bool pauseMorseNextTimerLoop = false;
 
 // -----------------------------
 
@@ -76,8 +76,6 @@ void setup() {
   pinMode(blueLEDPin, OUTPUT);
   pinMode(greenLEDPin, OUTPUT);
   pinMode(redLEDPin, OUTPUT);
-
-  initMorse();
 }
 
 void loop() {
@@ -85,9 +83,6 @@ void loop() {
   // flip input values because they run to ground
   bool button1Pressed = !digitalRead(button1Pin);
   bool button2Pressed = !digitalRead(button2Pin);
-
-  Serial.println(button1Pressed);
-  Serial.println(button2Pressed);
 
   if(button1Pressed && !button1PrevPressed){
     runMorse = true;
@@ -107,20 +102,27 @@ void loop() {
 
   updateStatusLED();
 
+  for(int i = 1; i < 1; i++){
+    // i understand how for loops work, but they ended up not being relevant for assignment for me
+  }
 }
 
 // ------ morse -------
 
 void initMorse(){
+  // important! execution order: first set the value back to 0, then read it
+  currentCharacterIndex = 0;
+
   // get the wait time for the current character, then multiply by 1000 to get the milliseconds from seconds
   currentWaitTime = (morseMessage[currentCharacterIndex] ? morseLongTime : morseShortTime) * 1000;
-
-  currentCharacterIndex = 0;
+  currentCharacterIndex++;
 
   // save the current time
   morseTimerStartTime = millis();
-  morsePaused = false;
-    digitalWrite(morseLEDPin, HIGH);
+  pauseMorseNextTimerLoop = true;
+  digitalWrite(morseLEDPin, HIGH);
+
+  //Serial.println("MORSE INIT~~");
 }
 
 void runMorseSequence(){
@@ -131,31 +133,34 @@ void runMorseSequence(){
   if(uptime - morseTimerStartTime > currentWaitTime){
 
 
-    if(morsePaused){
+    if(pauseMorseNextTimerLoop){
       currentWaitTime = morsePauseTime * 1000; // multiply to get milliseconds
 
       digitalWrite(morseLEDPin, LOW);
-      morsePaused = false; // unpause next timer loop
+      pauseMorseNextTimerLoop = false; // unpause next timer loop
 
+      //Serial.println("Pause!");
     }
     else{
       // get the wait time for the current character, then multiply by 1000 to get the milliseconds from seconds
       currentWaitTime = (morseMessage[currentCharacterIndex] ? morseLongTime : morseShortTime) * 1000;
       digitalWrite(morseLEDPin, HIGH);
       
+      // step forward after each pause, end on squence completed
       if(currentCharacterIndex < messageSize){
-        currentCharacterIndex = currentCharacterIndex++;
+        currentCharacterIndex++;
+        
+        //Serial.print("Character increased to: ");
+        //Serial.println(currentCharacterIndex);
       }
       else{
         runMorse = false;
+        digitalWrite(morseLEDPin, LOW);
       }
-      
-      morsePaused = true; // pause next time
 
+      pauseMorseNextTimerLoop = true; // pause next time
     }
-
     morseTimerStartTime = uptime;
-    
   }
 }
 
@@ -175,6 +180,9 @@ void updateStatusLED(){
   else{
     setStatusLEDColor(ledColor::RED);
   }
+
+  Serial.print("Potentiometer value: ");
+  Serial.println(potValue);
   
 }
 
