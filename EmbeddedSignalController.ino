@@ -129,7 +129,7 @@ void runMorseSequence(){
 
   uptime = millis();
 
-  // called every time timer ends
+  // called every time the timer ends
   if(uptime - morseTimerStartTime > currentWaitTime){
 
 
